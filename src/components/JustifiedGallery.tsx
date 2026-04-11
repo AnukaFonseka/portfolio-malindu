@@ -58,7 +58,7 @@ interface Row {
   height: number;
 }
 
-const GAP = 4; // px between images
+const GAP = 10; // px between images
 
 function computeRows(
   images: Artwork[],
@@ -143,7 +143,7 @@ function GalleryImage({ img }: { img: RowImage }) {
         className="object-cover"
         style={{
           transform: hovered ? "scale(1.03)" : "scale(1)",
-          transition: "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+          transition: "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)"
         }}
       />
 

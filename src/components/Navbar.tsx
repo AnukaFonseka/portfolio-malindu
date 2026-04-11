@@ -15,106 +15,90 @@ export default function Navbar() {
   const pathname = usePathname();
 
   return (
-    <header
-      className="relative z-10"
-      style={{
-        backgroundColor: "rgba(12,12,12,0.96)",
-        borderBottom: "1px solid #181818",
-      }}
-    >
-      <nav className="flex items-center justify-between h-16 md:h-17" style={{ paddingLeft: 40, paddingRight: 40 }}>
-        {/* Name — Brandon Grotesque */}
-        <Link href="/" style={{ textDecoration: "none" }}>
-          <span
-            className="text-xl tracking-widest uppercase"
-            style={{
-              fontFamily: "var(--font-display)",
-              color: "#ede8e0",
-              letterSpacing: "0.14em",
-              fontWeight: 400,
-            }}
-          >
-            Malindu
-          </span>
-        </Link>
-
-        {/* Desktop nav — Europa */}
-        <ul className="hidden md:flex items-center gap-10">
-          {navLinks.map((link) => {
-            const active = pathname === link.href;
-            return (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  className="text-[11px] tracking-[0.22em] uppercase transition-colors duration-300"
-                  style={{
-                    fontFamily: "var(--font-body)",
-                    color: active ? "#ede8e0" : "#3d3d3d",
-                    textDecoration: "none",
-                    fontWeight: 400,
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.color = "#ede8e0")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = active ? "#ede8e0" : "#3d3d3d")
-                  }
-                >
-                  {link.label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-
-        {/* Mobile hamburger */}
-        <button
-          className="md:hidden flex flex-col justify-center gap-1.25 p-2 -mr-2"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle menu"
-        >
-          {[0, 1, 2].map((i) => (
+    <header className="relative z-10 bg-[rgba(12,12,12,0.96)]">
+      <nav className="px-10 mt-5">
+        {/* Row 1: Name + Nav links */}
+        <div className="flex items-center gap-10 h-full">
+          <Link href="/" className="no-underline shrink-0">
             <span
-              key={i}
-              className="block h-px w-5"
-              style={{
-                backgroundColor: "#ede8e0",
-                transition: "all 0.3s ease",
-                transform:
-                  i === 0 && menuOpen
-                    ? "rotate(45deg) translate(3.5px, 3.5px)"
-                    : i === 2 && menuOpen
-                    ? "rotate(-45deg) translate(3.5px, -3.5px)"
-                    : "none",
-                opacity: i === 1 && menuOpen ? 0 : 1,
-              }}
-            />
-          ))}
-        </button>
+              className="text-xl tracking-[0.14em] uppercase font-normal text-text-primary"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              Malindu Samuditha
+            </span>
+          </Link>
+
+          {/* Desktop nav — same row as name */}
+          <ul className="hidden md:flex items-center gap-10">
+            {navLinks.map((link) => {
+              const active = pathname === link.href;
+              return (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className={`text-[11px] tracking-[0.22em] uppercase font-normal no-underline transition-colors duration-300 ${
+                      active ? "text-text-primary" : "text-[#3d3d3d] hover:text-text-primary"
+                    }`}
+                    style={{ fontFamily: "var(--font-body)" }}
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Mobile hamburger — pushed to end */}
+          <button
+            className="md:hidden flex flex-col justify-center gap-[5px] p-2 -mr-2 ml-auto"
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Toggle menu"
+          >
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="block h-px w-5 bg-text-primary transition-all duration-300"
+                style={{
+                  transform:
+                    i === 0 && menuOpen
+                      ? "rotate(45deg) translate(3.5px, 3.5px)"
+                      : i === 2 && menuOpen
+                      ? "rotate(-45deg) translate(3.5px, -3.5px)"
+                      : "none",
+                  opacity: i === 1 && menuOpen ? 0 : 1,
+                }}
+              />
+            ))}
+          </button>
+        </div>
+
+        {/* Row 2: Subtitle — sits under the name */}
+        <div className="pb-1.5">
+          <span
+            className="text-[11px] tracking-[0.22em] uppercase text-[#3d3d3d]"
+            style={{ fontFamily: "var(--font-body)" }}
+          >
+            Illustrator | Concept Artist
+          </span>
+        </div>
       </nav>
 
       {/* Mobile menu */}
       <div
-        className="md:hidden overflow-hidden"
-        style={{
-          maxHeight: menuOpen ? "200px" : "0",
-          backgroundColor: "rgba(12,12,12,0.98)",
-          transition: "max-height 0.4s ease",
-          borderBottom: menuOpen ? "1px solid #181818" : "none",
-        }}
+        className={`md:hidden overflow-hidden bg-[rgba(12,12,12,0.98)] transition-[max-height] duration-400 ease-in-out ${
+          menuOpen ? "max-h-[200px] border-b border-[#181818]" : "max-h-0"
+        }`}
       >
-        <ul className="flex flex-col pb-6 pt-2 gap-5" style={{ paddingLeft: 40, paddingRight: 40 }}>
+        <ul className="flex flex-col pb-6 pt-2 gap-5 px-10">
           {navLinks.map((link) => (
             <li key={link.href}>
               <Link
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
-                className="text-[11px] tracking-[0.25em] uppercase"
-                style={{
-                  fontFamily: "var(--font-body)",
-                  color: pathname === link.href ? "#ede8e0" : "#3d3d3d",
-                  textDecoration: "none",
-                }}
+                className={`text-[11px] tracking-[0.25em] uppercase no-underline ${
+                  pathname === link.href ? "text-[#ede8e0]" : "text-[#3d3d3d]"
+                }`}
+                style={{ fontFamily: "var(--font-body)" }}
               >
                 {link.label}
               </Link>
