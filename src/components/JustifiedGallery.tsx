@@ -3,41 +3,58 @@
 import Image from "next/image";
 import { useState, useEffect, useRef, useCallback } from "react";
 
-const artworks = [
-  { id: 6, src: "/Brawler.png", title: "Brawler", category: "Character Concept", year: "2025" },
-  { id: 7, src: "/slasher.png", title: "Slasher", category: "Character Concept", year: "2025" },
-  { id: 8, src: "/ODA base 1.jpeg", title: "ODA Base I", category: "Character Concept", year: "2025" },
-  { id: 9, src: "/ODA base 2.jpg", title: "ODA Base II", category: "Character Concept", year: "2025" },
-  { id: 10, src: "/ODA base 3.jpg", title: "ODA Base III", category: "Character Concept", year: "2025" },
-  { id: 11, src: "/berserker 1.jpg", title: "Berserker I", category: "Character Concept", year: "2025" },
-  { id: 12, src: "/berserker 2.png", title: "Berserker II", category: "Character Concept", year: "2025" },
-  { id: 13, src: "/weapon.png", title: "Weapon", category: "Prop Design", year: "2025" },
-  { id: 14, src: "/sentry.jpg", title: "Sentry", category: "Character Concept", year: "2025" },
-  { id: 1, src: "/1.jpeg", title: "Vessel", category: "Environment Design", year: "2024" },
-  { id: 2, src: "/4.jpeg", title: "Iron Journey", category: "Vehicle Concept", year: "2024" },
-  { id: 3, src: "/5.jpeg", title: "The Awakening", category: "Environment Design", year: "2025" },
-  { id: 4, src: "/6.jpeg", title: "Ember Realm", category: "Environment Design", year: "2025" },
-  { id: 5, src: "/7.jpeg", title: "Sovereign", category: "Character Concept", year: "2025" },
+type ImageItem = {
+  type: "image";
+  id: number;
+  src: string;
+  title: string;
+  category: string;
+  year: string;
+};
+
+type VideoItem = {
+  type: "video";
+  id: number;
+  src: string;
+  title: string;
+};
+
+type GalleryItem = ImageItem | VideoItem;
+
+const galleryItems: GalleryItem[] = [
+  { type: "image", id: 6,  src: "/Brawler.png",       title: "Brawler",       category: "Character Concept",   year: "2025" },
+  { type: "image", id: 7,  src: "/slasher.png",        title: "Slasher",       category: "Character Concept",   year: "2025" },
+  { type: "image", id: 8,  src: "/ODA base 1.jpeg",    title: "ODA Base I",    category: "Character Concept",   year: "2025" },
+  { type: "image", id: 9,  src: "/ODA base 2.jpg",     title: "ODA Base II",   category: "Character Concept",   year: "2025" },
+  { type: "image", id: 10, src: "/ODA base 3.jpg",     title: "ODA Base III",  category: "Character Concept",   year: "2025" },
+  { type: "video", id: 100, src: "/videos/0001-0108 (2).mkv", title: "Motion Reel" },
+  { type: "image", id: 11, src: "/berserker 1.jpg",    title: "Berserker I",   category: "Character Concept",   year: "2025" },
+  { type: "image", id: 12, src: "/berserker 2.png",    title: "Berserker II",  category: "Character Concept",   year: "2025" },
+  { type: "image", id: 13, src: "/weapon.png",         title: "Weapon",        category: "Prop Design",         year: "2025" },
+  { type: "image", id: 14, src: "/sentry.jpg",         title: "Sentry",        category: "Character Concept",   year: "2025" },
+  // { type: "image", id: 1,  src: "/1.jpeg",             title: "Vessel",        category: "Environment Design",  year: "2024" },
+  { type: "image", id: 2,  src: "/4.jpeg",             title: "Iron Journey",  category: "Vehicle Concept",     year: "2024" },
+  { type: "image", id: 3,  src: "/5.jpeg",             title: "The Awakening", category: "Environment Design",  year: "2025" },
+  { type: "image", id: 4,  src: "/6.jpeg",             title: "Ember Realm",   category: "Environment Design",  year: "2025" },
+  { type: "image", id: 5,  src: "/7.jpeg",             title: "Sovereign",     category: "Character Concept",   year: "2025" },
 ];
 
-type Artwork = (typeof artworks)[0];
-
-interface ArtworkWithRatio extends Artwork {
+interface ImageItemWithRatio extends ImageItem {
   ratio: number;
 }
 
-interface RowImage extends ArtworkWithRatio {
+interface RowImage extends ImageItemWithRatio {
   displayWidth: number;
   displayHeight: number;
 }
 
-interface Row {
-  images: RowImage[];
-  height: number;
-}
+type ImageRow = { type: "image"; images: RowImage[]; height: number };
+type VideoRow = { type: "video"; id: number; src: string; title: string };
+type GalleryRow = ImageRow | VideoRow;
 
 const GAP = 10;
 const MAX_ROW_HEIGHT = 520;
+const VIDEO_STRIPE_HEIGHT = 210;
 
 async function loadRatio(src: string): Promise<number> {
   return new Promise((resolve) => {
@@ -48,27 +65,72 @@ async function loadRatio(src: string): Promise<number> {
   });
 }
 
+function flushImagePending(
+  pending: (ImageItemWithRatio & { scaledWidth: number })[],
+  pendingWidth: number,
+  containerWidth: number,
+  targetRowHeight: number,
+  rows: GalleryRow[],
+  forceStretch = false
+) {
+  if (pending.length === 0) return;
+  const availableWidth = containerWidth - GAP * (pending.length - 1);
+  if (forceStretch || pendingWidth >= availableWidth) {
+    const scale = availableWidth / pendingWidth;
+    const rowHeight = Math.min(targetRowHeight * scale, MAX_ROW_HEIGHT);
+    const finalScale = rowHeight / targetRowHeight;
+    rows.push({
+      type: "image",
+      height: rowHeight,
+      images: pending.map((p) => ({
+        ...p,
+        displayWidth: p.scaledWidth * finalScale,
+        displayHeight: rowHeight,
+      })),
+    });
+  } else {
+    const rowHeight = Math.min(targetRowHeight, MAX_ROW_HEIGHT);
+    rows.push({
+      type: "image",
+      height: rowHeight,
+      images: pending.map((p) => ({
+        ...p,
+        displayWidth: p.ratio * rowHeight,
+        displayHeight: rowHeight,
+      })),
+    });
+  }
+}
+
 function computeRows(
-  images: ArtworkWithRatio[],
+  items: (ImageItemWithRatio | VideoItem)[],
   containerWidth: number,
   targetRowHeight: number
-): Row[] {
-  const rows: Row[] = [];
-  let pending: (ArtworkWithRatio & { scaledWidth: number })[] = [];
+): GalleryRow[] {
+  const rows: GalleryRow[] = [];
+  let pending: (ImageItemWithRatio & { scaledWidth: number })[] = [];
   let pendingWidth = 0;
 
-  for (const img of images) {
-    const scaledWidth = targetRowHeight * img.ratio;
-    pending.push({ ...img, scaledWidth });
+  for (const item of items) {
+    if (item.type === "video") {
+      flushImagePending(pending, pendingWidth, containerWidth, targetRowHeight, rows, true);
+      pending = [];
+      pendingWidth = 0;
+      rows.push({ type: "video", id: item.id, src: item.src, title: item.title });
+      continue;
+    }
+
+    const scaledWidth = targetRowHeight * item.ratio;
+    pending.push({ ...item, scaledWidth });
     pendingWidth += scaledWidth;
 
     const availableWidth = containerWidth - GAP * (pending.length - 1);
-
     if (pendingWidth >= availableWidth) {
       const scale = availableWidth / pendingWidth;
       const rowHeight = Math.min(targetRowHeight * scale, MAX_ROW_HEIGHT);
       const finalScale = rowHeight / targetRowHeight;
       rows.push({
+        type: "image",
         height: rowHeight,
         images: pending.map((p) => ({
           ...p,
@@ -81,33 +143,7 @@ function computeRows(
     }
   }
 
-  if (pending.length > 0) {
-    const availableWidth = containerWidth - GAP * (pending.length - 1);
-    if (pendingWidth >= availableWidth) {
-      const scale = availableWidth / pendingWidth;
-      const rowHeight = Math.min(targetRowHeight * scale, MAX_ROW_HEIGHT);
-      const finalScale = rowHeight / targetRowHeight;
-      rows.push({
-        height: rowHeight,
-        images: pending.map((p) => ({
-          ...p,
-          displayWidth: p.scaledWidth * finalScale,
-          displayHeight: rowHeight,
-        })),
-      });
-    } else {
-      const rowHeight = Math.min(targetRowHeight, MAX_ROW_HEIGHT);
-      rows.push({
-        height: rowHeight,
-        images: pending.map((p) => ({
-          ...p,
-          displayWidth: p.ratio * rowHeight,
-          displayHeight: rowHeight,
-        })),
-      });
-    }
-  }
-
+  flushImagePending(pending, pendingWidth, containerWidth, targetRowHeight, rows);
   return rows;
 }
 
@@ -116,7 +152,7 @@ function GalleryImage({ img }: { img: RowImage }) {
 
   return (
     <div
-      className="relative overflow-hidden shrink-0"
+      className="relative overflow-hidden shrink-0 rounded-xl"
       style={{ width: img.displayWidth, height: img.displayHeight }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -172,29 +208,108 @@ function GalleryImage({ img }: { img: RowImage }) {
   );
 }
 
+function VideoStripe({ row }: { row: VideoRow }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const container = containerRef.current;
+    if (!video || !container) return;
+
+    let targetTime = 0;
+    let rafId = 0;
+
+    const getTargetTime = () => {
+      if (!video.duration) return 0;
+      const rect = container.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const progress = Math.max(0, Math.min(1, (vh - rect.top) / (vh + rect.height)));
+      return progress * video.duration;
+    };
+
+    const tick = () => {
+      const diff = targetTime - video.currentTime;
+      // lerp: fast catch-up for large gaps, smooth easing for small ones
+      if (Math.abs(diff) > 0.001) {
+        video.currentTime += diff * 0.14;
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+
+    const onScroll = () => { targetTime = getTargetTime(); };
+    const onMetadata = () => { targetTime = getTargetTime(); };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    video.addEventListener("loadedmetadata", onMetadata);
+    rafId = requestAnimationFrame(tick);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      video.removeEventListener("loadedmetadata", onMetadata);
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-full overflow-hidden rounded-xl"
+      style={{ height: VIDEO_STRIPE_HEIGHT }}
+    >
+      <video
+        ref={videoRef}
+        src={row.src}
+        muted
+        playsInline
+        preload="auto"
+        className="w-full h-full object-cover"
+      />
+      <div
+        className="absolute inset-0 flex items-end p-5"
+        style={{
+          background:
+            "linear-gradient(to top, rgba(10,10,10,0.65) 0%, transparent 60%)",
+          pointerEvents: "none",
+        }}
+      >
+        <p
+          className="text-[9px] tracking-[0.3em] uppercase"
+          style={{ color: "#c8a97e", fontFamily: "var(--font-body)" }}
+        >
+          {row.title}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function JustifiedGallery() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<GalleryRow[]>([]);
   const [ready, setReady] = useState(false);
-  const ratiosRef = useRef<ArtworkWithRatio[] | null>(null);
+  const ratiosRef = useRef<(ImageItemWithRatio | VideoItem)[] | null>(null);
 
-  const recompute = useCallback((artworksWithRatios: ArtworkWithRatio[]) => {
+  const recompute = useCallback((items: (ImageItemWithRatio | VideoItem)[]) => {
     if (!containerRef.current) return;
     const w = containerRef.current.offsetWidth;
     const targetHeight = Math.min(Math.max(window.innerHeight * 0.38, 220), MAX_ROW_HEIGHT);
-    setRows(computeRows(artworksWithRatios, w, targetHeight));
+    setRows(computeRows(items, w, targetHeight));
     setReady(true);
   }, []);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all(artworks.map(async (a) => ({ ...a, ratio: await loadRatio(a.src) }))).then(
-      (withRatios) => {
-        if (cancelled) return;
-        ratiosRef.current = withRatios;
-        recompute(withRatios);
-      }
-    );
+    Promise.all(
+      galleryItems.map(async (item) => {
+        if (item.type === "video") return item;
+        return { ...item, ratio: await loadRatio(item.src) };
+      })
+    ).then((withRatios) => {
+      if (cancelled) return;
+      ratiosRef.current = withRatios as (ImageItemWithRatio | VideoItem)[];
+      recompute(ratiosRef.current);
+    });
     return () => { cancelled = true; };
   }, [recompute]);
 
@@ -209,21 +324,27 @@ export default function JustifiedGallery() {
   return (
     <div ref={containerRef} className="w-full" style={{ padding: "32px 40px 40px" }}>
       {ready &&
-        rows.map((row, ri) => (
-          <div
-            key={ri}
-            className="flex overflow-hidden"
-            style={{
-              height: row.height,
-              gap: GAP,
-              marginBottom: ri < rows.length - 1 ? GAP : 0,
-            }}
-          >
-            {row.images.map((img) => (
-              <GalleryImage key={img.id} img={img} />
-            ))}
-          </div>
-        ))}
+        rows.map((row, ri) => {
+          const mb = ri < rows.length - 1 ? GAP : 0;
+          if (row.type === "video") {
+            return (
+              <div key={`v-${row.id}`} style={{ marginBottom: mb }}>
+                <VideoStripe row={row} />
+              </div>
+            );
+          }
+          return (
+            <div
+              key={ri}
+              className="flex overflow-hidden rounded-xl"
+              style={{ height: row.height, gap: GAP, marginBottom: mb }}
+            >
+              {row.images.map((img) => (
+                <GalleryImage key={img.id} img={img} />
+              ))}
+            </div>
+          );
+        })}
     </div>
   );
 }

@@ -27,7 +27,7 @@ export default function RootLayout({
           href="https://fonts.cdnfonts.com/css/europa-2"
         />
       </head>
-      <body className="min-h-screen bg-[#0c0c0c] text-[#ede8e0]">
+      <body className="min-h-screen bg-[#0c0c0c] text-[#ede8e0] md:mx-7 2xl:mx-16">
         <Navbar />
         {children}
       </body>
