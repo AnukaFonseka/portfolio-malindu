@@ -52,6 +52,11 @@ type ImageRow = { type: "image"; images: RowImage[]; height: number };
 type VideoRow = { type: "video"; id: number; src: string; title: string };
 type GalleryRow = ImageRow | VideoRow;
 
+type LayoutState =
+  | { kind: "pending" }
+  | { kind: "mobile"; items: (ImageItemWithRatio | VideoItem)[] }
+  | { kind: "desktop"; rows: GalleryRow[] };
+
 const GAP = 10;
 const MAX_ROW_HEIGHT = 520;
 const VIDEO_STRIPE_HEIGHT = 210;
@@ -147,6 +152,45 @@ function computeRows(
   return rows;
 }
 
+function ImageOverlay({ category, title, hovered }: { category: string; title: string; hovered: boolean }) {
+  return (
+    <div
+      className="absolute inset-0 flex flex-col justify-end p-5"
+      style={{
+        background: hovered
+          ? "linear-gradient(to top, rgba(10,10,10,0.78) 0%, rgba(10,10,10,0.18) 55%, transparent 100%)"
+          : "transparent",
+        transition: "background 0.45s ease",
+      }}
+    >
+      <div
+        style={{
+          opacity: hovered ? 1 : 0,
+          transform: hovered ? "translateY(0)" : "translateY(8px)",
+          transition: "opacity 0.35s ease, transform 0.35s ease",
+        }}
+      >
+        <p
+          className="text-[9px] tracking-[0.3em] uppercase mb-1"
+          style={{ color: "#c8a97e", fontFamily: "var(--font-body)" }}
+        >
+          {category}
+        </p>
+        <p
+          className="text-lg font-normal leading-tight"
+          style={{
+            color: "#ede8e0",
+            fontFamily: "var(--font-display)",
+            letterSpacing: "0.05em",
+          }}
+        >
+          {title}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function GalleryImage({ img }: { img: RowImage }) {
   const [hovered, setHovered] = useState(false);
 
@@ -169,41 +213,37 @@ function GalleryImage({ img }: { img: RowImage }) {
           transition: "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
         }}
       />
+      <ImageOverlay category={img.category} title={img.title} hovered={hovered} />
+    </div>
+  );
+}
 
-      <div
-        className="absolute inset-0 flex flex-col justify-end p-5"
+function MobileGalleryImage({ img }: { img: ImageItemWithRatio }) {
+  const [hovered, setHovered] = useState(false);
+  const h = Math.round(1000 / img.ratio);
+
+  return (
+    <div
+      className="relative rounded-xl w-full overflow-hidden"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <Image
+        src={img.src}
+        alt={img.title}
+        width={1000}
+        height={h}
+        sizes="100vw"
+        quality={85}
         style={{
-          background: hovered
-            ? "linear-gradient(to top, rgba(10,10,10,0.78) 0%, rgba(10,10,10,0.18) 55%, transparent 100%)"
-            : "transparent",
-          transition: "background 0.45s ease",
+          width: "100%",
+          height: "auto",
+          display: "block",
+          transform: hovered ? "scale(1.03)" : "scale(1)",
+          transition: "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
         }}
-      >
-        <div
-          style={{
-            opacity: hovered ? 1 : 0,
-            transform: hovered ? "translateY(0)" : "translateY(8px)",
-            transition: "opacity 0.35s ease, transform 0.35s ease",
-          }}
-        >
-          <p
-            className="text-[9px] tracking-[0.3em] uppercase mb-1"
-            style={{ color: "#c8a97e", fontFamily: "var(--font-body)" }}
-          >
-            {img.category}
-          </p>
-          <p
-            className="text-lg font-normal leading-tight"
-            style={{
-              color: "#ede8e0",
-              fontFamily: "var(--font-display)",
-              letterSpacing: "0.05em",
-            }}
-          >
-            {img.title}
-          </p>
-        </div>
-      </div>
+      />
+      <ImageOverlay category={img.category} title={img.title} hovered={hovered} />
     </div>
   );
 }
@@ -284,18 +324,22 @@ function VideoStripe({ row }: { row: VideoRow }) {
   );
 }
 
+const MOBILE_BREAKPOINT = 640;
+
 export default function JustifiedGallery() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [rows, setRows] = useState<GalleryRow[]>([]);
-  const [ready, setReady] = useState(false);
+  const [layout, setLayout] = useState<LayoutState>({ kind: "pending" });
   const ratiosRef = useRef<(ImageItemWithRatio | VideoItem)[] | null>(null);
 
   const recompute = useCallback((items: (ImageItemWithRatio | VideoItem)[]) => {
     if (!containerRef.current) return;
     const w = containerRef.current.offsetWidth;
-    const targetHeight = Math.min(Math.max(window.innerHeight * 0.38, 220), MAX_ROW_HEIGHT);
-    setRows(computeRows(items, w, targetHeight));
-    setReady(true);
+    if (w < MOBILE_BREAKPOINT) {
+      setLayout({ kind: "mobile", items });
+    } else {
+      const targetHeight = Math.min(Math.max(window.innerHeight * 0.38, 220), MAX_ROW_HEIGHT);
+      setLayout({ kind: "desktop", rows: computeRows(items, w, targetHeight) });
+    }
   }, []);
 
   useEffect(() => {
@@ -321,30 +365,39 @@ export default function JustifiedGallery() {
     return () => ro.disconnect();
   }, [recompute]);
 
+  const isMobile = layout.kind === "mobile";
+
   return (
-    <div ref={containerRef} className="w-full" style={{ padding: "32px 40px 40px" }}>
-      {ready &&
-        rows.map((row, ri) => {
-          const mb = ri < rows.length - 1 ? GAP : 0;
-          if (row.type === "video") {
-            return (
-              <div key={`v-${row.id}`} style={{ marginBottom: mb }}>
-                <VideoStripe row={row} />
-              </div>
-            );
-          }
+    <div ref={containerRef} className="w-full" style={{ padding: isMobile ? "16px 16px 24px" : "32px 40px 40px" }}>
+      {layout.kind === "mobile" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: GAP }}>
+          {layout.items.map((item) => {
+            if (item.type === "video") return <VideoStripe key={`v-${item.id}`} row={item} />;
+            return <MobileGalleryImage key={item.id} img={item as ImageItemWithRatio} />;
+          })}
+        </div>
+      )}
+      {layout.kind === "desktop" && layout.rows.map((row, ri) => {
+        const mb = ri < layout.rows.length - 1 ? GAP : 0;
+        if (row.type === "video") {
           return (
-            <div
-              key={ri}
-              className="flex overflow-hidden rounded-xl"
-              style={{ height: row.height, gap: GAP, marginBottom: mb }}
-            >
-              {row.images.map((img) => (
-                <GalleryImage key={img.id} img={img} />
-              ))}
+            <div key={`v-${row.id}`} style={{ marginBottom: mb }}>
+              <VideoStripe row={row} />
             </div>
           );
-        })}
+        }
+        return (
+          <div
+            key={ri}
+            className="flex overflow-hidden rounded-xl"
+            style={{ height: row.height, gap: GAP, marginBottom: mb }}
+          >
+            {row.images.map((img) => (
+              <GalleryImage key={img.id} img={img} />
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
