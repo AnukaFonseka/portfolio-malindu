@@ -4,6 +4,15 @@ import Image from "next/image";
 import { useState, useEffect, useRef, useCallback } from "react";
 
 const artworks = [
+  { id: 6, src: "/Brawler.png", title: "Brawler", category: "Character Concept", year: "2025" },
+  { id: 7, src: "/slasher.png", title: "Slasher", category: "Character Concept", year: "2025" },
+  { id: 8, src: "/ODA base 1.jpeg", title: "ODA Base I", category: "Character Concept", year: "2025" },
+  { id: 9, src: "/ODA base 2.jpg", title: "ODA Base II", category: "Character Concept", year: "2025" },
+  { id: 10, src: "/ODA base 3.jpg", title: "ODA Base III", category: "Character Concept", year: "2025" },
+  { id: 11, src: "/berserker 1.jpg", title: "Berserker I", category: "Character Concept", year: "2025" },
+  { id: 12, src: "/berserker 2.png", title: "Berserker II", category: "Character Concept", year: "2025" },
+  { id: 13, src: "/weapon.png", title: "Weapon", category: "Prop Design", year: "2025" },
+  { id: 14, src: "/sentry.jpg", title: "Sentry", category: "Character Concept", year: "2025" },
   { id: 1, src: "/1.jpeg", title: "Vessel", category: "Environment Design", year: "2024" },
   { id: 2, src: "/4.jpeg", title: "Iron Journey", category: "Vehicle Concept", year: "2024" },
   { id: 3, src: "/5.jpeg", title: "The Awakening", category: "Environment Design", year: "2025" },
