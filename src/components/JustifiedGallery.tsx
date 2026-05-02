@@ -4,51 +4,20 @@ import Image from "next/image";
 import { useState, useEffect, useRef, useCallback } from "react";
 
 const artworks = [
-  {
-    id: 1,
-    src: "/1.jpeg",
-    title: "Vessel",
-    category: "Environment Design",
-    year: "2024",
-    ratio: 4 / 3,
-  },
-  {
-    id: 2,
-    src: "/4.jpeg",
-    title: "Iron Journey",
-    category: "Vehicle Concept",
-    year: "2024",
-    ratio: 4 / 3,
-  },
-  {
-    id: 3,
-    src: "/5.jpeg",
-    title: "The Awakening",
-    category: "Environment Design",
-    year: "2025",
-    ratio: 16 / 9,
-  },
-  {
-    id: 4,
-    src: "/6.jpeg",
-    title: "Ember Realm",
-    category: "Environment Design",
-    year: "2025",
-    ratio: 16 / 9,
-  },
-  {
-    id: 5,
-    src: "/7.jpeg",
-    title: "Sovereign",
-    category: "Character Concept",
-    year: "2025",
-    ratio: 16 / 9,
-  },
+  { id: 1, src: "/1.jpeg", title: "Vessel", category: "Environment Design", year: "2024" },
+  { id: 2, src: "/4.jpeg", title: "Iron Journey", category: "Vehicle Concept", year: "2024" },
+  { id: 3, src: "/5.jpeg", title: "The Awakening", category: "Environment Design", year: "2025" },
+  { id: 4, src: "/6.jpeg", title: "Ember Realm", category: "Environment Design", year: "2025" },
+  { id: 5, src: "/7.jpeg", title: "Sovereign", category: "Character Concept", year: "2025" },
 ];
 
 type Artwork = (typeof artworks)[0];
 
-interface RowImage extends Artwork {
+interface ArtworkWithRatio extends Artwork {
+  ratio: number;
+}
+
+interface RowImage extends ArtworkWithRatio {
   displayWidth: number;
   displayHeight: number;
 }
@@ -58,15 +27,25 @@ interface Row {
   height: number;
 }
 
-const GAP = 10; // px between images
+const GAP = 10;
+const MAX_ROW_HEIGHT = 520;
+
+async function loadRatio(src: string): Promise<number> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.onload = () => resolve(img.naturalWidth / img.naturalHeight);
+    img.onerror = () => resolve(4 / 3);
+    img.src = src;
+  });
+}
 
 function computeRows(
-  images: Artwork[],
+  images: ArtworkWithRatio[],
   containerWidth: number,
   targetRowHeight: number
 ): Row[] {
   const rows: Row[] = [];
-  let pending: (Artwork & { scaledWidth: number })[] = [];
+  let pending: (ArtworkWithRatio & { scaledWidth: number })[] = [];
   let pendingWidth = 0;
 
   for (const img of images) {
@@ -74,17 +53,17 @@ function computeRows(
     pending.push({ ...img, scaledWidth });
     pendingWidth += scaledWidth;
 
-    // Available pixel width after accounting for gaps between images
     const availableWidth = containerWidth - GAP * (pending.length - 1);
 
     if (pendingWidth >= availableWidth) {
       const scale = availableWidth / pendingWidth;
-      const rowHeight = targetRowHeight * scale;
+      const rowHeight = Math.min(targetRowHeight * scale, MAX_ROW_HEIGHT);
+      const finalScale = rowHeight / targetRowHeight;
       rows.push({
         height: rowHeight,
         images: pending.map((p) => ({
           ...p,
-          displayWidth: p.scaledWidth * scale,
+          displayWidth: p.scaledWidth * finalScale,
           displayHeight: rowHeight,
         })),
       });
@@ -93,29 +72,28 @@ function computeRows(
     }
   }
 
-  // Last row — never stretch; keep images at natural targetRowHeight
   if (pending.length > 0) {
     const availableWidth = containerWidth - GAP * (pending.length - 1);
     if (pendingWidth >= availableWidth) {
-      // Row is full or overflowing — scale down normally
       const scale = availableWidth / pendingWidth;
-      const rowHeight = targetRowHeight * scale;
+      const rowHeight = Math.min(targetRowHeight * scale, MAX_ROW_HEIGHT);
+      const finalScale = rowHeight / targetRowHeight;
       rows.push({
         height: rowHeight,
         images: pending.map((p) => ({
           ...p,
-          displayWidth: p.scaledWidth * scale,
+          displayWidth: p.scaledWidth * finalScale,
           displayHeight: rowHeight,
         })),
       });
     } else {
-      // Incomplete last row — render at natural size, left-aligned
+      const rowHeight = Math.min(targetRowHeight, MAX_ROW_HEIGHT);
       rows.push({
-        height: targetRowHeight,
+        height: rowHeight,
         images: pending.map((p) => ({
           ...p,
-          displayWidth: p.scaledWidth,
-          displayHeight: targetRowHeight,
+          displayWidth: p.ratio * rowHeight,
+          displayHeight: rowHeight,
         })),
       });
     }
@@ -129,7 +107,7 @@ function GalleryImage({ img }: { img: RowImage }) {
 
   return (
     <div
-      className="relative overflow-hidden flex-shrink-0"
+      className="relative overflow-hidden shrink-0"
       style={{ width: img.displayWidth, height: img.displayHeight }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -140,14 +118,13 @@ function GalleryImage({ img }: { img: RowImage }) {
         fill
         sizes="50vw"
         quality={85}
-        className="object-cover"
+        className="object-contain"
         style={{
           transform: hovered ? "scale(1.03)" : "scale(1)",
-          transition: "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)"
+          transition: "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
         }}
       />
 
-      {/* Hover overlay */}
       <div
         className="absolute inset-0 flex flex-col justify-end p-5"
         style={{
@@ -190,29 +167,38 @@ export default function JustifiedGallery() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const [ready, setReady] = useState(false);
+  const ratiosRef = useRef<ArtworkWithRatio[] | null>(null);
 
-  const recompute = useCallback(() => {
+  const recompute = useCallback((artworksWithRatios: ArtworkWithRatio[]) => {
     if (!containerRef.current) return;
     const w = containerRef.current.offsetWidth;
-    // Target row height: 38% of viewport height, clamped
-    const targetHeight = Math.min(Math.max(window.innerHeight * 0.38, 220), 520);
-    setRows(computeRows(artworks, w, targetHeight));
+    const targetHeight = Math.min(Math.max(window.innerHeight * 0.38, 220), MAX_ROW_HEIGHT);
+    setRows(computeRows(artworksWithRatios, w, targetHeight));
     setReady(true);
   }, []);
 
   useEffect(() => {
-    recompute();
-    const ro = new ResizeObserver(recompute);
+    let cancelled = false;
+    Promise.all(artworks.map(async (a) => ({ ...a, ratio: await loadRatio(a.src) }))).then(
+      (withRatios) => {
+        if (cancelled) return;
+        ratiosRef.current = withRatios;
+        recompute(withRatios);
+      }
+    );
+    return () => { cancelled = true; };
+  }, [recompute]);
+
+  useEffect(() => {
+    const ro = new ResizeObserver(() => {
+      if (ratiosRef.current) recompute(ratiosRef.current);
+    });
     if (containerRef.current) ro.observe(containerRef.current);
     return () => ro.disconnect();
   }, [recompute]);
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full"
-      style={{ padding: "32px 40px 40px" }}
-    >
+    <div ref={containerRef} className="w-full" style={{ padding: "32px 40px 40px" }}>
       {ready &&
         rows.map((row, ri) => (
           <div
