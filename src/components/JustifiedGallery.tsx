@@ -22,7 +22,7 @@ type VideoItem = {
 type GalleryItem = ImageItem | VideoItem;
 
 const galleryItems: GalleryItem[] = [
-  { type: "video", id: 101, src: "/videos/0001-0020.mp4", title: "Environment Reel" },
+  // { type: "video", id: 101, src: "/videos/0001-0020.mp4", title: "Environment Reel" },
   { type: "image", id: 15, src: "/ranger.png",        title: "Berserker",     category: "Character Concept",   year: "2025" },
   { type: "image", id: 6,  src: "/Brawler.png",       title: "Brawler",       category: "Character Concept",   year: "2025" },
   { type: "image", id: 7,  src: "/slasher.png",        title: "Slasher",       category: "Character Concept",   year: "2025" },
