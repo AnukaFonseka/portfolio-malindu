@@ -22,6 +22,8 @@ type VideoItem = {
 type GalleryItem = ImageItem | VideoItem;
 
 const galleryItems: GalleryItem[] = [
+  { type: "video", id: 101, src: "/videos/0001-0020.mp4", title: "Environment Reel" },
+  { type: "image", id: 15, src: "/ranger.png",        title: "Berserker",     category: "Character Concept",   year: "2025" },
   { type: "image", id: 6,  src: "/Brawler.png",       title: "Brawler",       category: "Character Concept",   year: "2025" },
   { type: "image", id: 7,  src: "/slasher.png",        title: "Slasher",       category: "Character Concept",   year: "2025" },
   { type: "image", id: 8,  src: "/ODA base 1.jpeg",    title: "ODA Base I",    category: "Character Concept",   year: "2025" },
@@ -37,6 +39,10 @@ const galleryItems: GalleryItem[] = [
   { type: "image", id: 3,  src: "/5.jpeg",             title: "The Awakening", category: "Environment Design",  year: "2025" },
   { type: "image", id: 4,  src: "/6.jpeg",             title: "Ember Realm",   category: "Environment Design",  year: "2025" },
   { type: "image", id: 5,  src: "/7.jpeg",             title: "Sovereign",     category: "Character Concept",   year: "2025" },
+  { type: "image", id: 16, src: "/Limberspike.jpeg",        title: "Limberspike",     category: "Character Concept",   year: "2025" },
+  { type: "image", id: 17, src: "/envt.jpeg",        title: "Environment",     category: "Character Concept",   year: "2025" },
+  { type: "image", id: 18, src: "/character4.jpeg",       title: "CH 4",  category: "Character Concept",   year: "2025" }, 
+  { type: "image", id: 19, src: "/xforce.jpeg",       title: "CH 5",  category: "Character Concept",   year: "2025" },
 ];
 
 interface ImageItemWithRatio extends ImageItem {
